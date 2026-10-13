@@ -1,0 +1,14 @@
+/.quarto/
+/_site/
+/tools/vendor/
+*_files/
+__pycache__/
+.DS_Store
+Thumbs.db
+
+# ข้อมูลนักศึกษา (ชื่อ อีเมล คะแนน) ห้ามขึ้น repo
+*Responses*.xlsx
+
+**/*.quarto_ipynb
+
+/.claude/

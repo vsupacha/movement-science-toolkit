@@ -1,0 +1,75 @@
+project:
+  type: website
+  render:
+    - index.qmd
+    - history.qmd
+    - content/**/*.qmd
+  resources:
+    - tools/**
+    - data/**
+
+website:
+  title: "Movement Science Toolkit"
+  site-url: https://vsupacha.github.io/movement-science-toolkit/
+  repo-url: https://github.com/vsupacha/movement-science-toolkit
+  navbar:
+    left:
+      - href: index.qmd
+        text: หน้าแรก
+      - text: บทเรียน
+        menu:
+          - text: "หัวข้อ 1: Pose estimation"
+          - href: content/pose/01_principles.qmd
+          - href: content/pose/02_recording.qmd
+          - href: content/pose/03_reading_data.qmd
+          - href: content/pose/04_ai_review.qmd
+      - href: content/tools.qmd
+        text: เครื่องมือ
+      - href: history.qmd
+        text: ประวัติการอบรม
+    right:
+      - icon: github
+        href: https://github.com/vsupacha/movement-science-toolkit
+  sidebar:
+    style: docked
+    search: true
+    contents:
+      - index.qmd
+      - section: "หัวข้อ 1: Pose estimation"
+        contents:
+          - content/pose/01_principles.qmd
+          - content/pose/02_recording.qmd
+          - content/pose/03_reading_data.qmd
+          - content/pose/04_ai_review.qmd
+      - section: "หัวข้อ 2: IMU จากสมาร์ทโฟน (กำลังจัดทำ)"
+        contents: []
+      - section: "หัวข้อ 3: Pose + IMU (กำลังจัดทำ)"
+        contents: []
+      - content/tools.qmd
+      - history.qmd
+  page-footer:
+    center: "Movement Science Toolkit · ภาควิชาวิศวกรรมไฟฟ้าและคอมพิวเตอร์ คณะวิศวกรรมศาสตร์ มหาวิทยาลัยธรรมศาสตร์"
+
+format:
+  html:
+    theme: cosmo
+    lang: th
+    toc: true
+    toc-title: "ในหน้านี้"
+    code-copy: true
+    number-sections: false
+    smooth-scroll: true
+    html-math-method: katex
+    mermaid:
+      theme: default
+    mainfont: "Noto Sans Thai"
+    monofont: "JetBrains Mono"
+    include-in-header:
+      text: |
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    css: content/style.css
+
+author: "ผศ.ดร.ศุภชัย วรพจน์พิศุทธิ์"
+date: 2026-10-13
+date-format: long

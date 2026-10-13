@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เครื่องมือบันทึกท่าทาง (Pose Recorder)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="recorder.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="back" href="../../content/tools.html">← กลับหน้าเครื่องมือ</a>
+    <h1>บันทึกท่าทางด้วย MediaPipe Pose</h1>
+    <span id="engine-status" class="pill">กำลังโหลดโมเดล…</span>
+  </header>
+
+  <main class="layout">
+    <section class="stage-col">
+      <div class="mode-tabs" role="tablist">
+        <button id="tab-file" class="tab active" role="tab" aria-selected="true">ไฟล์วิดีโอ (แนะนำ)</button>
+        <button id="tab-camera" class="tab" role="tab" aria-selected="false">กล้องสด</button>
+      </div>
+
+      <div id="file-controls" class="controls">
+        <label class="file-pick">
+          <input id="video-file" type="file" accept="video/*">
+          <span>เลือกไฟล์วิดีโอ</span>
+        </label>
+        <label>ความถี่ในการสุ่มเฟรม
+          <select id="sample-fps">
+            <option value="15">15 เฟรม/วินาที (เร็ว)</option>
+            <option value="30" selected>30 เฟรม/วินาที</option>
+            <option value="60">60 เฟรม/วินาที (ละเอียด)</option>
+          </select>
+        </label>
+        <button id="process-btn" class="btn primary" disabled>เริ่มประมวลผล</button>
+        <button id="cancel-btn" class="btn" hidden>หยุด</button>
+      </div>
+
+      <div id="camera-controls" class="controls" hidden>
+        <button id="camera-btn" class="btn">เปิดกล้อง</button>
+        <button id="flip-btn" class="btn" disabled>สลับกล้องหน้า/หลัง</button>
+        <label>ระยะเวลา
+          <select id="rec-duration">
+            <option value="10">10 วินาที</option>
+            <option value="20">20 วินาที</option>
+            <option value="30" selected>30 วินาที</option>
+            <option value="60">60 วินาที</option>
+            <option value="120">120 วินาที</option>
+            <option value="0">กดหยุดเอง</option>
+          </select>
+        </label>
+        <label class="check"><input id="countdown" type="checkbox" checked> นับถอยหลัง 5 วินาที</label>
+        <button id="record-btn" class="btn primary" disabled>เริ่มบันทึก</button>
+      </div>
+
+      <div class="stage">
+        <canvas id="canvas" width="1280" height="720"></canvas>
+        <video id="video" class="offscreen" playsinline muted></video>
+        <div id="overlay" class="overlay" hidden></div>
+        <div id="placeholder" class="placeholder">เลือกไฟล์วิดีโอ หรือสลับไปแท็บ “กล้องสด”</div>
+      </div>
+
+      <div class="statusbar">
+        <span id="status">พร้อม</span>
+        <progress id="progress" max="1" value="0" hidden></progress>
+        <span id="fps" class="muted"></span>
+      </div>
+      <p class="privacy">🔒 ภาพและวิดีโอประมวลผลในเครื่องนี้เท่านั้น ไม่มีการส่งขึ้นอินเทอร์เน็ต</p>
+    </section>
+
+    <aside class="side-col">
+      <details open class="panel">
+        <summary>1. ข้อมูลการบันทึก</summary>
+        <label>ท่าที่บันทึก
+          <select id="exercise"></select>
+        </label>
+        <input id="exercise-other" type="text" placeholder="ระบุชื่อท่า (ภาษาอังกฤษ)" hidden>
+        <label>มุมกล้อง
+          <select id="view">
+            <option value="sagittal_left">ด้านข้าง – เห็นซีกซ้ายของผู้ถูกวัด</option>
+            <option value="sagittal_right">ด้านข้าง – เห็นซีกขวาของผู้ถูกวัด</option>
+            <option value="frontal_front">ด้านหน้า – ผู้ถูกวัดหันหน้าเข้ากล้อง</option>
+            <option value="frontal_back">ด้านหลัง – ผู้ถูกวัดหันหลังให้กล้อง</option>
+          </select>
+        </label>
+        <p id="view-tip" class="tip"></p>
+        <label>รหัสผู้ถูกวัด (ห้ามใส่ชื่อจริง)
+          <input id="subject" type="text" placeholder="เช่น S01">
+        </label>
+        <label>หมายเหตุ
+          <input id="note" type="text" placeholder="เช่น น้ำหนัก 3 kg, รอบที่ 2">
+        </label>
+      </details>
+
+      <details class="panel">
+        <summary>2. ตั้งค่าโมเดลและไฟล์</summary>
+        <label>โมเดล
+          <select id="model">
+            <option value="lite" selected>Lite – เร็ว เหมาะกับแท็บเล็ต/มือถือ</option>
+            <option value="full">Full – แม่นกว่า ช้ากว่า</option>
+          </select>
+        </label>
+        <label>จุดที่บันทึก
+          <select id="landmark-set">
+            <option value="main" selected>จุดหลัก 17 จุด (ไหล่ ศอก ข้อมือ สะโพก เข่า ข้อเท้า เท้า)</option>
+            <option value="all">ทุกจุด 33 จุด</option>
+          </select>
+        </label>
+        <label class="check"><input id="opt-world" type="checkbox" checked> บันทึกพิกัดโลก 3 มิติ (เมตร)</label>
+        <label class="check"><input id="opt-angles" type="checkbox" checked> เพิ่มคอลัมน์มุมข้อต่อ 2 มิติ</label>
+      </details>
+
+      <section class="panel">
+        <h2>ความชัดของจุด (visibility)</h2>
+        <p class="tip">เขียว ≥ 0.7 · เหลือง 0.5–0.7 · แดง &lt; 0.5 (อาจถูกบัง ควรปรับมุมกล้อง)</p>
+        <div id="vis-list" class="vis-list"></div>
+      </section>
+
+      <section class="panel">
+        <h2>มุมข้อต่อ (องศา)</h2>
+        <div id="angle-list" class="angle-list"></div>
+        <p class="tip">มุมภายในที่ข้อต่อ: เหยียดตรง ≈ 180° · คำนวณในระนาบภาพ จึงแม่นเมื่อการเคลื่อนไหวขนานกับกล้อง</p>
+      </section>
+
+      <section id="result" class="panel result" hidden>
+        <h2>ผลการบันทึก</h2>
+        <dl id="summary"></dl>
+        <ul id="warnings" class="warnings"></ul>
+        <div class="actions">
+          <button id="download-btn" class="btn primary">ดาวน์โหลด CSV</button>
+          <button id="share-btn" class="btn" hidden>แชร์ไฟล์…</button>
+        </div>
+        <p class="tip" id="filename"></p>
+      </section>
+    </aside>
+  </main>
+
+  <script type="module" src="recorder.js"></script>
+</body>
+</html>

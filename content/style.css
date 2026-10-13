@@ -1,0 +1,28 @@
+body { line-height: 1.75; }
+
+h1, h2, h3, .title { font-weight: 600; }
+
+.tool-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+.tool-card {
+  border: 1px solid #d9dee4;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  background: #fff;
+}
+.tool-card h3 { margin-top: 0; font-size: 1.1rem; }
+.tool-card .status { font-size: 0.8rem; padding: 1px 8px; border-radius: 999px; border: 1px solid; }
+.tool-card .status.ready { color: #1e9e55; border-color: #1e9e55; }
+.tool-card .status.soon { color: #8a939d; border-color: #b9c0c8; }
+.tool-card a.btn { margin-top: 0.5rem; }
+.tool-card.disabled { opacity: 0.7; }
+
+.figure-svg { max-width: 560px; margin: 1rem auto; display: block; }
+
+table { font-size: 0.95rem; }
+
+.callout { line-height: 1.7; }
