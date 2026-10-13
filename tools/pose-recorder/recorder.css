@@ -200,3 +200,34 @@ select, input[type="text"] {
 
 /* Safari บน iOS ไม่อัปเดตเฟรมของ video ที่ซ่อนด้วย display:none จึงย่อให้เล็กและโปร่งใสแทน */
 .offscreen { position: absolute; width: 2px; height: 2px; opacity: 0; pointer-events: none; left: 0; top: 0; }
+
+/* ภาพสำหรับเทียบกับ Kinovea (ส่วนล่างของหน้า) */
+.samples {
+  max-width: 1400px;
+  margin: 0 auto 24px;
+  padding: 12px 16px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.samples-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.samples-head h2 { font-size: 1.05rem; margin: 0; flex: 1 1 100%; }
+.samples-head label { display: flex; flex-direction: column; font-size: 0.85rem; color: var(--muted); min-width: 200px; }
+.sample-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+  margin: 10px 0;
+}
+.sample {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg);
+}
+.sample:hover, .sample:focus-visible { outline: 2px solid var(--primary); }
+.sample img { width: 100%; display: block; aspect-ratio: 16 / 9; object-fit: contain; background: var(--stage); }
+.sample figcaption { font-size: 0.8rem; padding: 4px 8px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 6px; }
+.sample .mp-angle { font-weight: 600; color: var(--primary); }
+.sample.saved figcaption::after { content: "✓ บันทึกแล้ว"; color: var(--good); }

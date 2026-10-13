@@ -6,7 +6,7 @@ import {
   LANDMARK_NAMES, LANDMARK_TH, MAIN_LANDMARKS, INDEX, ANGLE_DEFS, angle2D,
 } from '../shared/landmarks.js';
 import {
-  TOOLKIT_ID, buildCSV, timestampSlug, downloadText, canShareFiles, shareText,
+  TOOLKIT_ID, buildCSV, timestampSlug, downloadText, downloadBlob, canShareFiles, shareText,
 } from '../shared/csv.js';
 
 const TASKS_VERSION = '0.10.35';
@@ -45,6 +45,8 @@ const el = {
   visList: $('vis-list'), angleList: $('angle-list'),
   result: $('result'), summary: $('summary'), warnings: $('warnings'),
   downloadBtn: $('download-btn'), shareBtn: $('share-btn'), filename: $('filename'),
+  samples: $('samples'), sampleMode: $('sample-mode'), compareJoint: $('compare-joint'), sampleGrid: $('sample-grid'),
+  saveAllBtn: $('save-all-btn'), templateBtn: $('template-btn'), revealBtn: $('reveal-btn'), mpCsvBtn: $('mp-csv-btn'),
 };
 const ctx = el.canvas.getContext('2d');
 
@@ -73,6 +75,8 @@ const state = {
   csv: '',
   csvName: '',
   session: null,         // ข้อมูลประกอบของการบันทึกล่าสุด
+  samples: [],           // ภาพสำหรับเทียบกับ Kinovea: { frame, blob, url, name, saved }
+  revealed: false,
 };
 
 // ---------- การโหลดไลบรารีและโมเดล ----------
@@ -368,6 +372,7 @@ function showResult() {
   if (pct < 90) warns.push(`ตรวจไม่พบคน ${(100 - pct).toFixed(0)}% ของเฟรม (ช่องว่างในไฟล์มี detected = 0)`);
   if (state.session.source === 'camera' && st.meanFps < 15) warns.push('อัตราเฟรมต่ำกว่า 15 ลองใช้โมเดล Lite หรือโหมดไฟล์วิดีโอ');
   const low = MAIN_LANDMARKS.filter((n) => n !== 'nose' && st.visMean[n] < 0.5).map((n) => LANDMARK_TH[n]);
+  if (st.detected > 0 && st.visMean.nose < 0.5) warns.push('มองไม่เห็นศีรษะในหลายเฟรม โมเดลต้องเห็นศีรษะจึงจะตรวจจับได้แม่น ควรถ่ายให้เห็นทั้งตัวรวมศีรษะ');
   if (low.length && st.detected > 0) warns.push(`มองเห็นไม่ชัด (visibility เฉลี่ย < 0.5): ${low.join(', ')} – อาจถูกบัง ไม่ควรใช้จุดเหล่านี้วิเคราะห์`);
   el.warnings.innerHTML = warns.map((w) => `<li>${w}</li>`).join('');
   el.filename.textContent = state.csvName;
@@ -402,6 +407,7 @@ async function loadVideoFile(file) {
   stopCamera();
   state.videoFile = null;
   el.processBtn.disabled = true;
+  clearSamples();
   const v = el.video;
   v.srcObject = null;
   v.src = URL.createObjectURL(file);
@@ -465,6 +471,7 @@ async function processVideo() {
   el.cancelBtn.hidden = true;
   el.progress.hidden = true;
   showResult();
+  if (state.frames.some((f) => f.lm)) await captureSamples();
 }
 
 // ---------- โหมดกล้องสด ----------
@@ -586,6 +593,152 @@ function releaseWakeLock() {
   state.wakeLock = null;
 }
 
+// ---------- ภาพสำหรับเทียบกับการมาร์กด้วยคน (Kinovea) ----------
+
+const MAX_SAMPLES = 10;
+
+// เลือกเฟรมที่ตรวจพบคน: 3 ภาพที่ 25/50/75% หรือทุก 5/10 วินาที อย่างน้อย 3 ไม่เกิน 10 ภาพ
+function pickSampleFrames(mode) {
+  const fr = state.frames.filter((f) => f.lm);
+  if (fr.length === 0) return [];
+  const t0 = fr[0].time_s, t1 = fr[fr.length - 1].time_s, dur = t1 - t0;
+  const quarters = [0.25, 0.5, 0.75].map((p) => t0 + p * dur);
+  let targets = quarters;
+  if (mode !== '3') {
+    const step = Number(mode);
+    targets = [];
+    for (let t = t0 + step; t <= t1 + 1e-6; t += step) targets.push(t);
+    if (targets.length < 3) targets = quarters;
+  }
+  if (targets.length > MAX_SAMPLES) {
+    const k = targets.length;
+    targets = Array.from({ length: MAX_SAMPLES }, (_, i) => targets[Math.round((i * (k - 1)) / (MAX_SAMPLES - 1))]);
+  }
+  const chosen = [];
+  for (const t of targets) {
+    let best = fr[0];
+    for (const f of fr) if (Math.abs(f.time_s - t) < Math.abs(best.time_s - t)) best = f;
+    if (!chosen.includes(best)) chosen.push(best);
+  }
+  return chosen;
+}
+
+function sampleBase() {
+  const s = state.session;
+  const subj = s.subject ? `_${s.subject.replace(/[^A-Za-z0-9-]+/g, '')}` : '';
+  return `${s.exercise}_${s.view}${subj}_${timestampSlug(s.created)}`;
+}
+
+function clearSamples() {
+  for (const smp of state.samples) URL.revokeObjectURL(smp.url);
+  state.samples = [];
+  state.revealed = false;
+  el.samples.hidden = true;
+  el.sampleGrid.innerHTML = '';
+}
+
+// เลื่อนวิดีโอไปยังเฟรมที่เลือกแล้วเก็บภาพเปล่า (ไม่มีโครงร่าง) ความละเอียดเต็ม
+async function captureSamples() {
+  if (state.processing || state.session?.source !== 'video-file' || !state.videoFile) return;
+  const v = el.video;
+  const picks = pickSampleFrames(el.sampleMode.value);
+  clearSamples();
+  if (picks.length === 0) return;
+  setStatus('กำลังสร้างภาพสำหรับเทียบ…');
+  const off = document.createElement('canvas');
+  off.width = v.videoWidth;
+  off.height = v.videoHeight;
+  const octx = off.getContext('2d');
+  const base = sampleBase();
+  for (const f of picks) {
+    await seekTo(v, f.time_s);
+    octx.drawImage(v, 0, 0, off.width, off.height);
+    const blob = await new Promise((r) => off.toBlob(r, 'image/jpeg', 0.92));
+    const name = `${base}_f${String(f.frame).padStart(4, '0')}_t${f.time_s.toFixed(2)}s.jpg`;
+    state.samples.push({ frame: f, blob, url: URL.createObjectURL(blob), name, saved: false });
+  }
+  setStatus(`สร้างภาพสำหรับเทียบ ${state.samples.length} ภาพ (ส่วนล่างของหน้า)`);
+  renderSamples();
+  el.samples.hidden = false;
+}
+
+function sampleAngle(smp) {
+  const def = ANGLE_DEFS.find((d) => d.key === el.compareJoint.value);
+  const lm = smp.frame.lm;
+  const vis = Math.min(...def.pts.map((n) => lm[INDEX[n]].visibility ?? 0));
+  return { def, angle: angleOf(def, lm, state.session.width, state.session.height), vis };
+}
+
+function renderSamples() {
+  el.sampleGrid.innerHTML = '';
+  state.samples.forEach((smp, i) => {
+    const fig = document.createElement('figure');
+    fig.className = 'sample' + (smp.saved ? ' saved' : '');
+    fig.tabIndex = 0;
+    fig.title = 'คลิกเพื่อบันทึกภาพ ' + smp.name;
+    const { angle, vis } = sampleAngle(smp);
+    const mp = state.revealed
+      ? `<span class="mp-angle">${angle.toFixed(1)}°${vis < 0.5 ? ' ⚠' : ''}</span>` : '';
+    fig.innerHTML = `<img src="${smp.url}" alt="เฟรม ${smp.frame.frame}">
+      <figcaption><span>#${i + 1} · เฟรม ${smp.frame.frame} · ${smp.frame.time_s.toFixed(2)} s</span>${mp}</figcaption>`;
+    const save = () => {
+      downloadBlob(smp.blob, smp.name);
+      smp.saved = true;
+      fig.classList.add('saved');
+    };
+    fig.onclick = save;
+    fig.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        save();
+      }
+    };
+    el.sampleGrid.appendChild(fig);
+  });
+  el.revealBtn.hidden = state.revealed;
+  el.mpCsvBtn.hidden = !state.revealed;
+}
+
+// บน iPad/iPhone ใช้ share sheet (บันทึกลงรูปภาพหรือไฟล์ได้ครั้งเดียว) บนโน้ตบุ๊กดาวน์โหลดทีละไฟล์
+async function saveAllSamples() {
+  const files = state.samples.map((smp) => new File([smp.blob], smp.name, { type: 'image/jpeg' }));
+  if (navigator.canShare?.({ files })) {
+    try {
+      await navigator.share({ files });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  for (const smp of state.samples) {
+    downloadBlob(smp.blob, smp.name);
+    smp.saved = true;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  renderSamples();
+}
+
+// แบบฟอร์มกรอกมุมจาก Kinovea (withMediaPipe = false) หรือมุมจาก MediaPipe ของภาพชุดเดียวกัน
+function compareCSV(withMediaPipe) {
+  const s = state.session;
+  const def = ANGLE_DEFS.find((d) => d.key === el.compareJoint.value);
+  const meta = [
+    { toolkit: TOOLKIT_ID, type: withMediaPipe ? 'compare_mediapipe' : 'compare_form', version: 1 },
+    { file: s.fileName, exercise: s.exercise, view: s.view, joint: def.key, points: def.pts.join('-') },
+    { angle: 'interior_2d_degrees_180_is_straight', model: `pose_landmarker_${state.modelName}` },
+  ];
+  const header = withMediaPipe
+    ? ['frame', 'time_s', 'image', 'joint', 'mediapipe_angle', 'min_visibility']
+    : ['frame', 'time_s', 'image', 'joint', 'kinovea_angle', 'rater', 'note'];
+  const rows = state.samples.map((smp) => {
+    const base = [smp.frame.frame, smp.frame.time_s.toFixed(4), smp.name, def.key];
+    if (!withMediaPipe) return [...base, '', '', ''];
+    const { angle, vis } = sampleAngle(smp);
+    return [...base, angle.toFixed(1), vis.toFixed(3)];
+  });
+  return buildCSV(meta, header, rows);
+}
+
 // ---------- ส่วนติดต่อผู้ใช้ ----------
 
 function setMode(mode) {
@@ -598,6 +751,12 @@ function setMode(mode) {
   el.fileControls.hidden = mode !== 'file';
   el.cameraControls.hidden = mode !== 'camera';
   if (mode === 'file') stopCamera();
+  // ไฟล์วิดีโอไม่ต้องเร็วแบบเรียลไทม์ จึงใช้โมเดลที่แม่นกว่า (ดู model card)
+  const preferred = mode === 'file' ? 'full' : 'lite';
+  if (el.model.value !== preferred && !(mode === 'file' && el.model.value === 'heavy')) {
+    el.model.value = preferred;
+    el.model.onchange();
+  }
 }
 
 function fillExercises() {
@@ -636,6 +795,12 @@ function bind() {
   el.shareBtn.onclick = () => shareText(state.csv, state.csvName).catch((e) => {
     if (e.name !== 'AbortError') setStatus('แชร์ไม่สำเร็จ ใช้ปุ่มดาวน์โหลดแทน');
   });
+  el.sampleMode.onchange = () => captureSamples();
+  el.compareJoint.onchange = () => renderSamples();
+  el.saveAllBtn.onclick = () => saveAllSamples();
+  el.templateBtn.onclick = () => downloadText(compareCSV(false), `${sampleBase()}_kinovea_form.csv`);
+  el.revealBtn.onclick = () => { state.revealed = true; renderSamples(); };
+  el.mpCsvBtn.onclick = () => downloadText(compareCSV(true), `${sampleBase()}_mediapipe_angles.csv`);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && state.recording) requestWakeLock();
   });
@@ -649,6 +814,7 @@ function onEngineError(e) {
 
 fillExercises();
 buildPanels();
+el.compareJoint.innerHTML = ANGLE_DEFS.map((d) => `<option value="${d.key}">${d.label}</option>`).join('');
 bind();
 createLandmarker(el.model.value)
   .then(() => {

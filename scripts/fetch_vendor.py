@@ -23,6 +23,7 @@ FILES = {
     "tasks-vision/wasm/vision_wasm_nosimd_internal.wasm": TASKS + "wasm/vision_wasm_nosimd_internal.wasm",
     "models/pose_landmarker_lite.task": MODEL.format("lite"),
     "models/pose_landmarker_full.task": MODEL.format("full"),
+    "models/pose_landmarker_heavy.task": MODEL.format("heavy"),
 }
 
 

@@ -52,7 +52,10 @@ export function timestampSlug(d = new Date()) {
 
 // บันทึกไฟล์: แชร์ผ่าน share sheet (iPhone/iPad) หรือดาวน์โหลด
 export function downloadText(text, filename, mime = 'text/csv') {
-  const blob = new Blob([text], { type: mime });
+  downloadBlob(new Blob([text], { type: mime }), filename);
+}
+
+export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

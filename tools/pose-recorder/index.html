@@ -98,17 +98,19 @@
         <summary>2. ตั้งค่าโมเดลและไฟล์</summary>
         <label>โมเดล
           <select id="model">
-            <option value="lite" selected>Lite – เร็ว เหมาะกับแท็บเล็ต/มือถือ</option>
-            <option value="full">Full – แม่นกว่า ช้ากว่า</option>
+            <option value="lite">Lite – เร็ว (แนะนำสำหรับกล้องสด)</option>
+            <option value="full" selected>Full – แม่นกว่า (แนะนำสำหรับไฟล์วิดีโอ)</option>
+            <option value="heavy">Heavy – แม่นที่สุด ช้ามาก (ไฟล์วิดีโอบนโน้ตบุ๊ก)</option>
           </select>
         </label>
+        <p class="tip">ความแม่นยำตาม model card: Lite 87% · Full 92% · Heavy 94% (เปลี่ยนให้อัตโนมัติเมื่อสลับโหมด)</p>
         <label>จุดที่บันทึก
           <select id="landmark-set">
             <option value="main" selected>จุดหลัก 17 จุด (ไหล่ ศอก ข้อมือ สะโพก เข่า ข้อเท้า เท้า)</option>
             <option value="all">ทุกจุด 33 จุด</option>
           </select>
         </label>
-        <label class="check"><input id="opt-world" type="checkbox" checked> บันทึกพิกัดโลก 3 มิติ (เมตร)</label>
+        <label class="check"><input id="opt-world" type="checkbox"> บันทึกพิกัดโลก 3 มิติ (เมตร, ทดลอง)</label>
         <label class="check"><input id="opt-angles" type="checkbox" checked> เพิ่มคอลัมน์มุมข้อต่อ 2 มิติ</label>
       </details>
 
@@ -136,6 +138,31 @@
       </section>
     </aside>
   </main>
+
+  <section id="samples" class="samples" hidden>
+    <div class="samples-head">
+      <h2>ภาพสำหรับเทียบกับการมาร์กด้วยคน (Kinovea)</h2>
+      <label>เลือกภาพ
+        <select id="sample-mode">
+          <option value="3" selected>3 ภาพ (25%, 50%, 75% ของคลิป)</option>
+          <option value="5">ทุก 5 วินาที</option>
+          <option value="10">ทุก 10 วินาที</option>
+        </select>
+      </label>
+      <label>ข้อต่อที่จะเทียบ
+        <select id="compare-joint"></select>
+      </label>
+    </div>
+    <p class="tip">คลิกภาพเพื่อบันทึก (ภาพเปล่าไม่มีโครงร่าง) · อย่างน้อย 3 ภาพ ไม่เกิน 10 ภาพ ·
+      วัดมุมใน Kinovea ให้เสร็จก่อน แล้วจึงกด “เปิดเผยมุม MediaPipe” เพื่อไม่ให้ค่าของ AI ชี้นำการวัด</p>
+    <div id="sample-grid" class="sample-grid"></div>
+    <div class="actions">
+      <button id="save-all-btn" class="btn">บันทึกทุกภาพ</button>
+      <button id="template-btn" class="btn">ดาวน์โหลดแบบฟอร์มกรอกมุม (CSV)</button>
+      <button id="reveal-btn" class="btn">เปิดเผยมุม MediaPipe</button>
+      <button id="mp-csv-btn" class="btn primary" hidden>ดาวน์โหลดมุม MediaPipe (CSV)</button>
+    </div>
+  </section>
 
   <script type="module" src="recorder.js"></script>
 </body>

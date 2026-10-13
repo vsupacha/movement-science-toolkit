@@ -21,7 +21,7 @@ flowchart LR
 
 | หัวข้อ | เรื่อง | สถานะ |
 | --- | --- | --- |
-| 1 | **Pose estimation ด้วยกล้อง** (MediaPipe): [หลักการ](content/pose/01_principles.qmd) · [การบันทึก](content/pose/02_recording.qmd) · [การอ่านและตีความข้อมูล](content/pose/03_reading_data.qmd) · [ใช้ AI ทบทวนการวิเคราะห์](content/pose/04_ai_review.qmd) | พร้อมใช้ |
+| 1 | **Pose estimation ด้วยกล้อง** (MediaPipe): [หลักการ](content/pose/01_principles.qmd) · [การบันทึก](content/pose/02_recording.qmd) · [การอ่านและตีความข้อมูล](content/pose/03_reading_data.qmd) · [เทียบกับการมาร์กด้วยคน](content/pose/05_validity.qmd) · [ใช้ AI ทบทวนการวิเคราะห์](content/pose/04_ai_review.qmd) | พร้อมใช้ |
 | 2 | **IMU จากสมาร์ทโฟน**: ความเร่ง ความเร็วเชิงมุม และมุมเอียงของส่วนร่างกาย | กำลังจัดทำ |
 | 3 | **Pose + IMU พร้อมกัน**: ซิงก์เวลา เทียบสองวิธี และใช้จุดแข็งของแต่ละเซนเซอร์ | กำลังจัดทำ |
 

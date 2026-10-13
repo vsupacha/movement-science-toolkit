@@ -22,6 +22,7 @@ website:
           - href: content/pose/01_principles.qmd
           - href: content/pose/02_recording.qmd
           - href: content/pose/03_reading_data.qmd
+          - href: content/pose/05_validity.qmd
           - href: content/pose/04_ai_review.qmd
       - href: content/tools.qmd
         text: เครื่องมือ
@@ -40,6 +41,7 @@ website:
           - content/pose/01_principles.qmd
           - content/pose/02_recording.qmd
           - content/pose/03_reading_data.qmd
+          - content/pose/05_validity.qmd
           - content/pose/04_ai_review.qmd
       - section: "หัวข้อ 2: IMU จากสมาร์ทโฟน (กำลังจัดทำ)"
         contents: []
